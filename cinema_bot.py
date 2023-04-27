@@ -13,16 +13,26 @@ def start(message):
 
 @bot.message_handler(func=lambda message: True)
 def handle_text(message):
-    username = message.text
+    user_name = message.text
+    user_id = message.from_user.id
 
     connect = sqlite3.connect('users.db')
     cursor = connect.cursor()
-
     cursor.execute("""CREATE TABLE IF NOT EXISTS users
-                              (name TEXT)""")
-    cursor.execute("""INSERT OR IGNORE INTO users(name) VALUES (?)""", (username,))
+                              (user_id INT PRIMARY KEY,
+                               user_name TEXT,
+                               film TEXT
+                               )""")
+    cursor.execute("""SELECT * FROM users WHERE user_id = ?""", (user_id,))
+    exist_user = cursor.fetchone()
+    if exist_user:
+        cursor.execute("""UPDATE users SET user_name = ? WHERE user_id = ?""", (user_name, user_id))
+    else:
+        cursor.execute("""INSERT INTO users (user_name, user_id ) VALUES (?,?)""",
+                       (user_name, user_id))
     connect.commit()
-
+    connect.close()
+    
     kb = types.InlineKeyboardMarkup()
     button_yes = types.InlineKeyboardButton(text='Отправь', callback_data='yes')
     button_no = types.InlineKeyboardButton(text='Не хочу', callback_data='no')
@@ -75,6 +85,8 @@ def callback_inline(call):
         user_id = call.from_user.id
         with open('unwatched films.txt', 'rb') as txt:
             bot.send_document(chat_id=user_id, document=txt, visible_file_name='unwatched films.txt')
+        with open('unwatched films.txt', 'w') as txt:
+            txt.truncate(0)
 
 bot.polling(non_stop=True)
 
